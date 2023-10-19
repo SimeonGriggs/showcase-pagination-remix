@@ -1,6 +1,8 @@
-# Welcome to Remix!
+# Cursor-based pagination with GROQ in Remix
 
-- [Remix Docs](https://remix.run/docs)
+Paginating documents by a publishedAt dateTime field using the \_id field as a tie-breaker.
+
+This implementation includes stateful URLs which can be shared from any "page" of results with working next and previous buttons.
 
 ## Development
 
