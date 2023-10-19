@@ -33,7 +33,7 @@ export const loader: LoaderFunction = async ({ request }) => {
       // If first cursor is defined, get $perPage+1 items INCLUDING AND AFTER it in reverse order!
       (defined($cursor.firstPublishedAt)) => 
         dateTime(publishedAt) > dateTime($cursor.firstPublishedAt) 
-        || (publishedAt == $cursor.firstPublishedAt && _id > $cursor.firstId),
+        || (publishedAt == $cursor.firstPublishedAt && _id < $cursor.firstId),
       // If last cursor is defined, get $perPage+1 items AFTER lastPublishedAt
       (defined($cursor.lastPublishedAt)) => 
         dateTime(publishedAt) < dateTime($cursor.lastPublishedAt) 
@@ -241,7 +241,7 @@ export default function Index() {
           </div>
         )}
         <div className="flex items-center justify-between gap-1">
-          <div className="flex-1">perPage:</div>
+          <div className="flex-1 text-right px-4">perPage:</div>
           {[2, 3, 4, 5, 8, 10, 12].map((value) => (
             <button
               key={value}
@@ -249,10 +249,7 @@ export default function Index() {
               onClick={handlePagination}
               className={[
                 `bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded`,
-                perPage === value ||
-                searchParams.get("perPage") === value.toString()
-                  ? `bg-blue-900`
-                  : `bg-blue-500`,
+                perPage === value ? `bg-blue-900` : `bg-blue-500`,
               ].join(` `)}
               value={value}
             >
