@@ -31,24 +31,26 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     && select(
       // If first cursor is defined, get $perPage+1 items INCLUDING AND AFTER it in reverse order!
-      (defined($cursor.firstPublishedAt)) => 
+      (defined($cursor.firstPublishedAt) && defined($cursor.firstId)) => 
         dateTime(publishedAt) > dateTime($cursor.firstPublishedAt) 
         || (dateTime(publishedAt) == dateTime($cursor.firstPublishedAt) && _id > $cursor.firstId),
       // If last cursor is defined, get $perPage+1 items AFTER lastPublishedAt
-      (defined($cursor.lastPublishedAt)) => 
+      (defined($cursor.lastPublishedAt) && defined($cursor.lastId)) => 
         dateTime(publishedAt) < dateTime($cursor.lastPublishedAt) 
-        || (dateTime(publishedAt) == dateTime($cursor.lastPublishedAt) && _id > $cursor.lastId),
+        || (dateTime(publishedAt) == dateTime($cursor.lastPublishedAt) && _id < $cursor.lastId),
       // No pagination cursor, then no additional filtering
       true
     )
   ] 
   // Unfortunately I couldn't do conditional ordering, so we're using JS to flip the order
   // Order-flipping is required when we have a $firstId
-  | order(publishedAt ${params.cursor.firstPublishedAt ? `asc` : `desc`}) 
+  | order(publishedAt ${params.cursor.firstPublishedAt ? `asc` : `desc`}, _id ${
+    params.cursor.firstPublishedAt ? `asc` : `desc`
+  }) 
   // Fetch one more to work out if we have a next page
-  [0...$perPage + 1] 
+  [0...$perPage + 1]
   // If reverse ordered, flip-back, newest-to-oldest
-  | order(publishedAt desc)`;
+  | order(publishedAt desc, _id desc)`;
 
   let lessons = await client.fetch<SanityDocument[]>(query, params);
 
