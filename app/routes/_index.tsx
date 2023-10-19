@@ -73,12 +73,14 @@ export const loader: LoaderFunction = async ({ request }) => {
     // If we have a firstId cursor
     !!params.cursor.firstId;
 
-  // An extra lesson was found
+  // If an extra lesson was found
   if (lessons.length > params.perPage) {
-    lessons = lessons.slice(0, params.perPage);
+    lessons = params.cursor.firstId
+      ? // remove first item
+        lessons.slice(1, params.perPage + 1)
+      : // remove last item otherwise
+        lessons.slice(0, params.perPage);
   }
-
-  console.log(lessons.length, params.perPage);
 
   return json({
     lessons: lessons,
@@ -161,8 +163,8 @@ export default function Index() {
   };
 
   return (
-    <div className="container mx-auto grid grid-cols-2 gap-24 p-12">
-      <div className="py-4 prose prose-xl">
+    <div className="container mx-auto grid grid-cols-2 items-start gap-24 p-12">
+      <div className="prose prose-xl">
         <h2>Cursor-based pagination with GROQ in Remix</h2>
         <p>
           Paginating documents by a <code>publishedAt</code> dateTime field
@@ -187,7 +189,7 @@ export default function Index() {
         </ul>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 py-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="flex items-center justify-between">
           <button
             disabled={!hasPrevPage}
@@ -258,6 +260,7 @@ export default function Index() {
             </button>
           ))}
         </div>
+        <hr />
         <pre>
           {JSON.stringify(Object.fromEntries(searchParams.entries()), null, 2)}
         </pre>
