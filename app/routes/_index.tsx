@@ -33,11 +33,11 @@ export const loader: LoaderFunction = async ({ request }) => {
       // If first cursor is defined, get $perPage+1 items INCLUDING AND AFTER it in reverse order!
       (defined($cursor.firstPublishedAt)) => 
         dateTime(publishedAt) > dateTime($cursor.firstPublishedAt) 
-        || (publishedAt == $cursor.firstPublishedAt && _id < $cursor.firstId),
+        || (dateTime(publishedAt) == dateTime($cursor.firstPublishedAt) && _id > $cursor.firstId),
       // If last cursor is defined, get $perPage+1 items AFTER lastPublishedAt
       (defined($cursor.lastPublishedAt)) => 
         dateTime(publishedAt) < dateTime($cursor.lastPublishedAt) 
-        || (publishedAt == $cursor.lastPublishedAt && _id > $cursor.lastId),
+        || (dateTime(publishedAt) == dateTime($cursor.lastPublishedAt) && _id > $cursor.lastId),
       // No pagination cursor, then no additional filtering
       true
     )
@@ -51,6 +51,9 @@ export const loader: LoaderFunction = async ({ request }) => {
   | order(publishedAt desc)`;
 
   let lessons = await client.fetch<SanityDocument[]>(query, params);
+
+  console.log(params.cursor.firstId ? `First ID:` : `Last ID:`);
+  console.log(lessons.map((l) => l._id));
 
   // I'd imagine there's a simpler way to do this logic, but I like specificity
   const hasPrevPage =
@@ -162,6 +165,20 @@ export default function Index() {
     }
   };
 
+  const lessonIds =
+    lessons.length > 0 ? lessons.map((lesson) => lesson._id) : null;
+  const lessonIdsSorted =
+    lessons.length > 0
+      ? lessons
+          .map((lesson) => lesson._id)
+          .sort()
+          .reverse()
+      : null;
+  const lessonIdsMatch =
+    lessonIds &&
+    lessonIdsSorted &&
+    JSON.stringify(lessonIds) === JSON.stringify(lessonIdsSorted);
+
   return (
     <div className="container mx-auto grid grid-cols-2 items-start gap-24 p-12">
       <div className="prose prose-xl">
@@ -172,7 +189,7 @@ export default function Index() {
         </p>
         <p>
           This implementation includes stateful URLs which can be shared from
-          any "page" of results with working next and previous buttons.
+          any 'page' of results with working next and previous buttons.
         </p>
         <ul>
           <li>
@@ -220,7 +237,11 @@ export default function Index() {
             {lessons.map((lesson) => (
               <li
                 key={lesson._id}
-                className="bg-blue-50 text-blue-900 rounded-lg"
+                className={
+                  lessonIdsMatch
+                    ? `rounded bg-blue-50 text-blue-900`
+                    : `rounded bg-yellow-50 text-yellow-900`
+                }
               >
                 <div className="flex justify-between items-center py-6 px-8 font-mono leading-none">
                   <div>
@@ -232,6 +253,16 @@ export default function Index() {
                 </div>
               </li>
             ))}
+            {lessonIdsMatch ? null : (
+              <li className="bg-red-50 text-red-900 rounded-lg">
+                <div className="flex justify-between items-center py-6 px-8 font-mono leading-none">
+                  <div>
+                    <strong>Warning:</strong> Lessons are not correctly sorted
+                    by _id
+                  </div>
+                </div>
+              </li>
+            )}
           </ul>
         ) : (
           <div className="bg-red-50 text-red-900 rounded-lg">
