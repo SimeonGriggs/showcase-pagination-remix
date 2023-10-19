@@ -2,6 +2,7 @@ import { json, type LoaderFunction, type MetaFunction } from "@remix-run/node";
 import { useLoaderData, useSearchParams } from "@remix-run/react";
 import type { SanityDocument } from "@sanity/client";
 import { format } from "date-fns";
+import React from "react";
 
 import { client } from "~/sanity/client";
 
@@ -12,6 +13,10 @@ export const meta: MetaFunction = () => {
 const DEFAULT_PER_PAGE = "3";
 
 export const loader: LoaderFunction = async ({ request }) => {
+  let allLessons = await client.fetch<SanityDocument[]>(
+    `*[_type == "lesson"]|order(publishedAt desc, _id desc)`,
+  );
+
   const requestUrl = new URL(request.url);
   const searchParams = new URLSearchParams(requestUrl.search);
   const params = {
@@ -54,9 +59,6 @@ export const loader: LoaderFunction = async ({ request }) => {
 
   let lessons = await client.fetch<SanityDocument[]>(query, params);
 
-  console.log(params.cursor.firstId ? `First ID:` : `Last ID:`);
-  console.log(lessons.map((l) => l._id));
-
   // I'd imagine there's a simpler way to do this logic, but I like specificity
   const hasPrevPage =
     // Cannot be true if there are no cursors
@@ -88,7 +90,8 @@ export const loader: LoaderFunction = async ({ request }) => {
   }
 
   return json({
-    lessons: lessons,
+    allLessons,
+    lessons,
     perPage: params.perPage,
     hasPrevPage,
     prevCursor: hasPrevPage
@@ -108,8 +111,15 @@ export const loader: LoaderFunction = async ({ request }) => {
 };
 
 export default function Index() {
-  const { lessons, perPage, hasPrevPage, hasNextPage, prevCursor, nextCursor } =
-    useLoaderData<typeof loader>();
+  const {
+    allLessons,
+    lessons,
+    perPage,
+    hasPrevPage,
+    hasNextPage,
+    prevCursor,
+    nextCursor,
+  } = useLoaderData<typeof loader>();
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -167,23 +177,9 @@ export default function Index() {
     }
   };
 
-  const lessonIds =
-    lessons.length > 0 ? lessons.map((lesson) => lesson._id) : null;
-  const lessonIdsSorted =
-    lessons.length > 0
-      ? lessons
-          .map((lesson) => lesson._id)
-          .sort()
-          .reverse()
-      : null;
-  const lessonIdsMatch =
-    lessonIds &&
-    lessonIdsSorted &&
-    JSON.stringify(lessonIds) === JSON.stringify(lessonIdsSorted);
-
   return (
-    <div className="container mx-auto grid grid-cols-2 items-start gap-24 p-12">
-      <div className="prose prose-xl">
+    <div className="container mx-auto grid grid-cols-5 items-start gap-24 p-12">
+      <div className="prose prose-xl col-span-2">
         <h2>Cursor-based pagination with GROQ in Remix</h2>
         <p>
           Paginating documents by a <code>publishedAt</code> dateTime field
@@ -208,7 +204,7 @@ export default function Index() {
         </ul>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 col-span-2">
         <div className="flex items-center justify-between">
           <button
             disabled={!hasPrevPage}
@@ -237,34 +233,15 @@ export default function Index() {
         {lessons?.length > 0 ? (
           <ul className="grid grid-cols-1 gap-1 py-1">
             {lessons.map((lesson) => (
-              <li
-                key={lesson._id}
-                className={
-                  lessonIdsMatch
-                    ? `rounded bg-blue-50 text-blue-900`
-                    : `rounded bg-yellow-50 text-yellow-900`
-                }
-              >
+              <li key={lesson._id} className="rounded bg-blue-50 text-blue-900">
                 <div className="flex justify-between items-center py-6 px-8 font-mono leading-none">
-                  <div>
-                    title: {lesson.title}, _id: {lesson._id}
-                  </div>
+                  <div>{lesson._id}</div>
                   <div>
                     {format(new Date(lesson.publishedAt), "dd/MM/yyyy")}
                   </div>
                 </div>
               </li>
             ))}
-            {lessonIdsMatch ? null : (
-              <li className="bg-red-50 text-red-900 rounded-lg">
-                <div className="flex justify-between items-center py-6 px-8 font-mono leading-none">
-                  <div>
-                    <strong>Warning:</strong> Lessons are not correctly sorted
-                    by _id
-                  </div>
-                </div>
-              </li>
-            )}
           </ul>
         ) : (
           <div className="bg-red-50 text-red-900 rounded-lg">
@@ -274,7 +251,6 @@ export default function Index() {
           </div>
         )}
         <div className="flex items-center justify-between gap-1">
-          <div className="flex-1 text-right px-4">perPage:</div>
           {[2, 3, 4, 5, 8, 10, 12].map((value) => (
             <button
               key={value}
@@ -294,6 +270,27 @@ export default function Index() {
         <pre>
           {JSON.stringify(Object.fromEntries(searchParams.entries()), null, 2)}
         </pre>
+      </div>
+
+      <div className="col-span-1 grid">
+        {allLessons.map((lesson, lessonIndex) => (
+          <React.Fragment key={lesson._id}>
+            <div
+              className={[
+                `text-xs font-mono rounded text-center border-b border-white`,
+                lessons.map((l) => l._id).includes(lesson._id)
+                  ? `bg-blue-100 text-blue-900 py-1`
+                  : `bg-gray-50 text-gray-300`,
+              ].join(` `)}
+            >
+              {lesson._id}
+            </div>
+            {/* Insert divider if lessonIndex is a multiple of perPage */}
+            {lessonIndex % perPage === perPage - 1 ? (
+              <div className="py-2" />
+            ) : null}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );
