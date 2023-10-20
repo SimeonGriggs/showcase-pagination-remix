@@ -250,6 +250,8 @@ export default function Index() {
             </div>
           </div>
         )}
+        <hr />
+        <p>Current perPage setting:</p>
         <div className="flex items-center justify-between gap-1">
           {[2, 3, 4, 5, 8, 10, 12].map((value) => (
             <button
@@ -267,30 +269,42 @@ export default function Index() {
           ))}
         </div>
         <hr />
+        <p>Current query params:</p>
         <pre>
           {JSON.stringify(Object.fromEntries(searchParams.entries()), null, 2)}
         </pre>
       </div>
 
       <div className="col-span-1 grid">
-        {allLessons.map((lesson, lessonIndex) => (
-          <React.Fragment key={lesson._id}>
-            <div
-              className={[
-                `text-xs font-mono rounded text-center border-b border-white`,
-                lessons.map((l) => l._id).includes(lesson._id)
-                  ? `bg-blue-100 text-blue-900 py-1`
-                  : `bg-gray-50 text-gray-300`,
-              ].join(` `)}
-            >
-              {lesson._id}
-            </div>
-            {/* Insert divider if lessonIndex is a multiple of perPage */}
-            {lessonIndex % perPage === perPage - 1 ? (
-              <div className="py-2" />
-            ) : null}
-          </React.Fragment>
-        ))}
+        {allLessons.map((lesson, lessonIndex) => {
+          const inPaginatedResults = lessons
+            .map((l) => l._id)
+            .includes(lesson._id);
+          const wasCursor =
+            searchParams.get("lastId") === lesson._id ||
+            searchParams.get("firstId") === lesson._id;
+
+          return (
+            <React.Fragment key={lesson._id}>
+              <div
+                className={[
+                  `text-xs font-mono rounded text-center border-b border-white`,
+                  inPaginatedResults
+                    ? `bg-blue-100 text-blue-900 py-1`
+                    : wasCursor
+                    ? `bg-yellow-100 text-yellow-900 py-1`
+                    : `bg-gray-50 text-gray-300`,
+                ].join(` `)}
+              >
+                {lesson._id}
+              </div>
+              {/* Insert divider if lessonIndex is a multiple of perPage */}
+              {lessonIndex % perPage === perPage - 1 ? (
+                <div className="py-1.5" />
+              ) : null}
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );
